@@ -7,13 +7,13 @@ based on an experiment name passed by the calling code.
 import numpy as np
 
 def get_exp_info(exp_name):
-    
+
     # Defaults
     if exp_name == 'ai0':
         gridname = 'ai0'; tag = 'v0'; ex_name = 'n0k'
     else:
         gridname = 'cas6'; tag = 'v3'; ex_name = 'lo8b'
-        
+
     EI = {}
     EI['exp_name'] = exp_name # tracker experiment name
     # ROMS names
@@ -22,29 +22,29 @@ def get_exp_info(exp_name):
     EI['ex_name'] = ex_name
     EI['gtagex'] = gridname + '_' + tag + '_' + ex_name
     return EI
-    
+
 def get_ic(EI, fn00):
     # routines to set particle initial locations, all numpy arrays
-    
+
     # NOTE: "pcs" refers to fractional depth, and goes linearly from -1 to 0
     # between the local bottom and free surface.  It is how we keep track of
     # vertical position, only converting to z-position when needed.
-    
+
     exp_name = EI['exp_name']
-        
+
     if exp_name == 'jdf0': # Mid-Juan de Fuca
         lonvec = np.linspace(-123.85, -123.6, 20)
         latvec = np.linspace(48.2, 48.4, 20)
         pcs_vec = np.array([0])
         plon00, plat00, pcs00 = ic_from_meshgrid(lonvec, latvec, pcs_vec)
-    
+
     if exp_name == 'ai0': # Mid-Admiralty Inlet
         lonvec = np.array([-122.6])
         latvec = np.array([48])
         # These are: (Slope off JdF, Middle of JdF, Whidbey Basin)
         pcs_vec = np.linspace(-1,-0.9,num=1000)
         plon00, plat00, pcs00 = ic_from_list(lonvec, latvec, pcs_vec)
-        
+
     elif exp_name == 'vmix': # three vertical profiles to test mixing
         # use with the new flag: -no_advection True, so a full command would be
         # python tracker.py -exp vmix -3d True -clb True -no_advection True
@@ -53,9 +53,116 @@ def get_ic(EI, fn00):
         # These are: (Slope off JdF, Middle of JdF, Whidbey Basin)
         pcs_vec = np.linspace(-1,0,num=4000)
         plon00, plat00, pcs00 = ic_from_list(lonvec, latvec, pcs_vec)
-        
+    elif exp_name == 'elb': # Elliot Bay
+        # Import Parker's packages for mapping
+        sys.path.append(os.path.abspath('../../LO/lo_tools/lo_tools'))
+        import Lfun, plotting_functions
+
+        # Import cas6 grid for finding coast
+        ds = nc.Dataset('../../LiveOcean_data/grids/cas6/grid.nc')
+
+        # Set area to search for coastline (at least 1 grid cell larger than desired coast)
+        latbounds = [47.581, 47.65]
+        lonbounds = [-122.441, -122.331]
+
+        # lon_psi and lat_psi as the corners for pcolormesh
+        latp = ds['lat_psi'][:].data
+        lonp = ds['lon_psi'][:].data
+        # lon_rho and lat_rho (grid cell centers) for release points
+        lats = ds['lat_rho'][:].data
+        lons = ds['lon_rho'][:].data
+        maskr = ds['mask_rho'][:].data
+        # h field for plotting
+        h = ds['h'][:].data
+        h[maskr==0] = np.nan
+
+        # Boolean of lat points greater than lower bound
+        rlat = lats[:,0]>=latbounds[0]
+        # Store index of first value greater than lower bound
+        latin = np.argmin(~rlat)
+
+        # Boolean of lat points less than upper bound
+        rlat = lats[:,0]<=latbounds[1]
+        # Store index of last value less than upper bound
+        latax = np.argmax(~rlat)
+
+        # Boolean of lon points greater than lower bound
+        rlon = lons[0,:]>=lonbounds[0]
+        # Store index of first value greater than lower bound
+        lonin = np.argmin(~rlon)
+
+        # Boolean of lon points less than upper bound
+        rlon = lons[0,:]<=lonbounds[1]
+        # Store index of last value less than upper bound
+        lonax = np.argmax(~rlon)
+
+        # Restrict mask_rho (binary water/coast) using indices from above
+        maskr = maskr[latin:latax, lonin:lonax]
+        #Print restricted maskr to comapre to later paper matrix
+        # Restrict lat and lon using indices from above
+        # plaid grid, take one row/column to prevent repeated values
+        lat = lats[latin:latax, 0]
+        lon = lons[0, lonin:lonax]
+
+        # Create empty list to store coastal water lat indices
+        il=[]
+        # Create empty list to store coastal water lon indices
+        jl=[]
+        # Create empty matrix to show coastal values
+        paper=np.zeros_like(maskr)
+
+        # For loop finds all adjacent values to water values and stores a water value
+        # if that value is next to any coast
+        # 1=water, 0=land
+        # Make sure for loop does not inclue first and last columns and rows, as they will
+        # compare to non-adjacent values (index 0 -1 = index 14)
+        for i in range(1,14):
+            for j in range(1,15):
+                if maskr[i, j]==1 and maskr[i-1, j]==0:
+                        paper[i,j]=2
+                        il.append(i)
+                        jl.append(j)
+                elif maskr[i, j]==1 and maskr[i+1, j]==0:
+                        paper[i,j]=2
+                        il.append(i)
+                        jl.append(j)
+                elif maskr[i, j]==1 and maskr[i, j+1]==0:
+                        paper[i,j]=2
+                        il.append(i)
+                        jl.append(j)
+                elif maskr[i, j]==1 and maskr[i, j-1]==0:
+                        paper[i,j]=2
+                        il.append(i)
+                        jl.append(j)
+                elif maskr[i, j]==1 and maskr[i-1, j-1]==0:
+                        paper[i,j]=2
+                        il.append(i)
+                        jl.append(j)
+                elif maskr[i, j]==1 and maskr[i-1, j+1]==0:
+                        paper[i,j]=2
+                        il.append(i)
+                        jl.append(j)
+                elif maskr[i, j]==1 and maskr[i+1, j-1]==0:
+                        paper[i,j]=2
+                        il.append(i)
+                        jl.append(j)
+                elif maskr[i, j]==1 and maskr[i+1, j+1]==0:
+                        paper[i,j]=2
+                        il.append(i)
+                        jl.append(j)
+                else:
+                    continue
+        # Print matrix that shows ID'ed coast water
+        # Create vectors of coastal waters within bounds
+        latf = lat[il]
+        lonf = lon[jl]
+        lonvec = lonf
+        latvec = latf
+        pcs_vec = np.zeros_like(lonf)
+        ds.close()
+        plon00, plat00, pcs00 = ic_from_list(lonvec, latvec, pcs_vec)
     return plon00, plat00, pcs00
-    
+
 def ic_from_meshgrid(lonvec, latvec, pcs_vec):
     # First create three vectors of initial locations (as done in some cases above).
     # plat00 and plon00 should be the same length, and the length of pcs00 is
@@ -78,7 +185,7 @@ def ic_from_meshgrid(lonvec, latvec, pcs_vec):
     plat00 = plat_arr.flatten()
     pcs00 = pcs_arr.flatten()
     return plon00, plat00, pcs00
-    
+
 def ic_from_list(lonvec, latvec, pcs_vec):
     # Like ic_from_meshgrid() but treats the lon, lat lists like lists of mooring locations.
     plon_vec = lonvec
@@ -94,7 +201,7 @@ def ic_from_list(lonvec, latvec, pcs_vec):
     plat00 = plat_arr.flatten()
     pcs00 = pcs_arr.flatten()
     return plon00, plat00, pcs00
-    
+
 def ic_from_TEFsegs(fn00, gridname, seg_list, DZ, NPmax=10000):
     import pickle
     import sys
@@ -147,4 +254,3 @@ def ic_from_TEFsegs(fn00, gridname, seg_list, DZ, NPmax=10000):
     print(len(plon00))
     sys.stdout.flush()
     return plon00, plat00, pcs00
-    

@@ -25,11 +25,11 @@ data = parent / 'LO_data'
 roms_code = parent / 'LiveOcean_roms'
 
 # These are places where the ROMS history files are kept
-roms_out = parent / 'LO_roms'
-roms_out1 = parent / 'BLANK' # placeholder
-roms_out2 = parent / 'BLANK'
-roms_out3 = parent / 'BLANK'
-roms_out4 = parent / 'BLANK'
+roms_out = parent / 'LiveOcean_roms'
+roms_out1 = parent / 'LiveOcean_roms' # placeholder
+roms_out2 = parent / 'LiveOcean_roms'
+roms_out3 = parent / 'LiveOcean_roms'
+roms_out4 = parent / 'LiveOcean_roms'
 
 # these are for mox and klone, other hyak mackines
 remote_user = 'BLANK'
@@ -46,32 +46,32 @@ try:
 except KeyError:
     HOSTNAME = 'BLANK'
 
-if str(HOME) == '/Users/pm8':
-    lo_env = 'pm_mac'
+if str(HOME) == '/home/mlpc':
+    lo_env = 'loenv'
     which_matlab = '/Applications/MATLAB_R2020a.app/bin/matlab'
     roms_out2 = parent / 'LiveOcean_roms' / 'output'    # LiveOcean past I
     roms_out3 = parent / 'LiveOcean_roms' / 'output'    # LiveOcean past II (same as I)
 
-elif (str(HOME) == '/home/parker') & ('boiler' in HOSTNAME):
+elif (str(HOME) == '/home/male370') & ('boiler' in HOSTNAME):
     lo_env = 'pm_boiler'
     roms_out1 = Path('/data1/parker/LiveOcean_roms/output')     # LiveOcean current
     roms_out2 = Path('/pgdat1/parker/LiveOcean_roms/output')    # LiveOcean past I
     roms_out3 = Path('/pgdat2/parker/LiveOcean_roms/output')    # LiveOcean past II
 
-elif (str(HOME) == '/home/parker') & ('perigee' in HOSTNAME):
-    lo_env = 'pm_perigee'
+elif (str(HOME) == '/home/male370') & ('perigee' in HOSTNAME):
+    lo_env = 'ml_perigee'
     roms_out1 = Path('/boildat1/parker/LiveOcean_roms/output')  # LiveOcean current
     roms_out2 = Path('/data1/parker/LiveOcean_roms/output')     # LiveOcean past I
     roms_out3 = Path('/data2/parker/LiveOcean_roms/output')     # LiveOcean past II
     roms_out4 = Path('/boildat1/parker/LO_roms')                # LO boiler
-    
-elif (str(HOME) == '/home/parker') & ('apogee' in HOSTNAME):
+
+elif (str(HOME) == '/home/male370') & ('apogee' in HOSTNAME):
     lo_env = 'pm_apogee'
     roms_out1 = Path('/boildat/parker/LiveOcean_roms/output')  # LiveOcean current
     roms_out2 = Path('/pgdat1/parker/LiveOcean_roms/output')     # LiveOcean past I
     roms_out3 = Path('/pgdat2/parker/LiveOcean_roms/output')     # LiveOcean past II
     roms_out4 = Path('/boildat/parker/LO_roms')                # LO boiler
-    
+
 elif (str(HOME) == '/usr/lusers/pmacc'):
     lo_env = 'pm_mox'
     remote_user = 'parker'
@@ -85,7 +85,7 @@ elif (str(HOME) == '/mmfs1/home/pmacc'):
     remote_machine = 'apogee.ocean.washington.edu'
     remote_dir0 = '/dat1/parker'
     local_user = 'pmacc'
-  
+
 Ldir0 = dict()
 Ldir0['lo_env'] = lo_env
 Ldir0['parent'] = parent
@@ -105,5 +105,3 @@ Ldir0['remote_user'] = remote_user
 Ldir0['remote_machine'] = remote_machine
 Ldir0['remote_dir0'] = remote_dir0
 Ldir0['local_user'] = local_user
-
-
