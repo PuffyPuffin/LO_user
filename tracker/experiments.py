@@ -5,6 +5,25 @@ based on an experiment name passed by the calling code.
 """
 
 import numpy as np
+import sys, os
+import xarray as xr
+from pathlib import Path as pth
+
+path0 = pth.cwd().parent.parent / 'LO_data' / 'grids' / 'cas6' / 'grid.nc'
+path1 = pth.cwd().parent / 'LO_user'
+paths = [path0, path1]
+for i in paths:
+    if str(paths) not in sys.path:
+        sys.path.append(str(paths))
+
+ds = xr.open_dataset(path0, decode_times=False)
+
+from importlib import reload
+from lo_tools import Lfun, plotting_functions
+
+
+# Import cas6 grid for finding coast
+
 
 def get_exp_info(exp_name):
 
@@ -12,7 +31,7 @@ def get_exp_info(exp_name):
     if exp_name == 'ai0':
         gridname = 'ai0'; tag = 'v0'; ex_name = 'n0k'
     else:
-        gridname = 'cas6'; tag = 'v3'; ex_name = 'lo8b'
+        gridname = 'cas6'; tag = 'v0'; ex_name = 'live'
 
     EI = {}
     EI['exp_name'] = exp_name # tracker experiment name
@@ -22,6 +41,104 @@ def get_exp_info(exp_name):
     EI['ex_name'] = ex_name
     EI['gtagex'] = gridname + '_' + tag + '_' + ex_name
     return EI
+def get_boundaries(slat, slon):
+    # Set area to search for coastline (at least 1 grid cell larger than desired coast)
+    latbounds = slat
+    lonbounds = slon
+    # lon_psi and lat_psi as the corners for pcolormesh
+    latp = ds.lat_psi.values
+    lonp = ds.lon_psi.values
+    # lon_rho and lat_rho (grid cell centers) for release points
+    lats = ds.lat_rho.values
+    lons = ds.lon_rho.values
+    maskr = ds.mask_rho.values
+    # h field for plotting
+    h = ds.h.values
+    h[maskr==0] = np.nan
+
+    # Boolean of lat points greater than lower bound
+
+    x = lats[:,0]>=latbounds[0]
+
+    y = lats[:,0]<=latbounds[1]
+    latin = np.argmin(~x)
+
+    latax = np.argmax(~y)
+
+    # Store index of first value greater than lower bound
+    x = lons[0,:]>=lonbounds[0]
+    y = lons[0,:]<=lonbounds[1]
+
+    lonin = np.argmin(~x)
+
+    # Boolean of lon points less than upper bound
+
+    # Store index of last value less than upper bound
+    lonax = np.argmax(~y)
+
+    # Restrict mask_rho (binary water/coast) using indices from above
+    maskr = maskr[latin:latax, lonin:lonax]
+
+
+
+    #Print restricted maskr to comapre to later paper matrix
+    # Restrict lat and lon using indices from above
+    # plaid grid, take one row/column to prevent repeated values
+    lat = lats[latin:latax, 0]
+    lon = lons[0, lonin:lonax]
+    # Create empty list to store coastal water lat indices
+    il=[]
+    # Create empty list to store coastal water lon indices
+    jl=[]
+    # Create empty matrix to show coastal values
+    paper=np.zeros_like(maskr)
+    # For loop finds all adjacent values to water values and stores a water value
+    # if that value is next to any coast
+    # 1=water, 0=land
+    # Make sure for loop does not inclue first and last columns and rows, as they will
+    # compare to non-adjacent values (index 0 -1 = index 14)
+    for i in range(1,len(lat)-1):
+        for j in range(1,len(lon)-1):
+            if maskr[i, j]==1 and maskr[i-1, j]==0:
+                paper[i,j]=2
+                il.append(i)
+                jl.append(j)
+            elif maskr[i, j]==1 and maskr[i+1, j]==0:
+                paper[i,j]=2
+                il.append(i)
+                jl.append(j)
+            elif maskr[i, j]==1 and maskr[i, j+1]==0:
+                paper[i,j]=2
+                il.append(i)
+                jl.append(j)
+            elif maskr[i, j]==1 and maskr[i, j-1]==0:
+                paper[i,j]=2
+                il.append(i)
+                jl.append(j)
+            elif maskr[i, j]==1 and maskr[i-1, j-1]==0:
+                paper[i,j]=2
+                il.append(i)
+                jl.append(j)
+            elif maskr[i, j]==1 and maskr[i-1, j+1]==0:
+                paper[i,j]=2
+                il.append(i)
+                jl.append(j)
+            elif maskr[i, j]==1 and maskr[i+1, j-1]==0:
+                paper[i,j]=2
+                il.append(i)
+                jl.append(j)
+            elif maskr[i, j]==1 and maskr[i+1, j+1]==0:
+                paper[i,j]=2
+                il.append(i)
+                jl.append(j)
+            else:
+                continue
+            # Print matrix that shows ID'ed coast water
+            # Create vectors of coastal waters within bounds
+    latf = lat[il]
+    lonf = lon[jl]
+
+    return latf, lonf
 
 def get_ic(EI, fn00):
     # routines to set particle initial locations, all numpy arrays
@@ -44,6 +161,7 @@ def get_ic(EI, fn00):
         # These are: (Slope off JdF, Middle of JdF, Whidbey Basin)
         pcs_vec = np.linspace(-1,-0.9,num=1000)
         plon00, plat00, pcs00 = ic_from_list(lonvec, latvec, pcs_vec)
+        ds.close()
 
     elif exp_name == 'vmix': # three vertical profiles to test mixing
         # use with the new flag: -no_advection True, so a full command would be
@@ -53,114 +171,61 @@ def get_ic(EI, fn00):
         # These are: (Slope off JdF, Middle of JdF, Whidbey Basin)
         pcs_vec = np.linspace(-1,0,num=4000)
         plon00, plat00, pcs00 = ic_from_list(lonvec, latvec, pcs_vec)
-    elif exp_name == 'elb': # Elliot Bay
-        # Import Parker's packages for mapping
-        sys.path.append(os.path.abspath('../../LO/lo_tools/lo_tools'))
-        import Lfun, plotting_functions
-
-        # Import cas6 grid for finding coast
-        ds = nc.Dataset('../../LiveOcean_data/grids/cas6/grid.nc')
+        ds.close()
+    elif exp_name == 'elb_np': # Elliot Bay
 
         # Set area to search for coastline (at least 1 grid cell larger than desired coast)
-        latbounds = [47.581, 47.65]
+        latbounds = [47.581, 47.63]
         lonbounds = [-122.441, -122.331]
 
-        # lon_psi and lat_psi as the corners for pcolormesh
-        latp = ds['lat_psi'][:].data
-        lonp = ds['lon_psi'][:].data
-        # lon_rho and lat_rho (grid cell centers) for release points
-        lats = ds['lat_rho'][:].data
-        lons = ds['lon_rho'][:].data
-        maskr = ds['mask_rho'][:].data
-        # h field for plotting
-        h = ds['h'][:].data
-        h[maskr==0] = np.nan
+        latf, lonf = get_boundaries(latbounds, lonbounds)
 
-        # Boolean of lat points greater than lower bound
-        rlat = lats[:,0]>=latbounds[0]
-        # Store index of first value greater than lower bound
-        latin = np.argmin(~rlat)
-
-        # Boolean of lat points less than upper bound
-        rlat = lats[:,0]<=latbounds[1]
-        # Store index of last value less than upper bound
-        latax = np.argmax(~rlat)
-
-        # Boolean of lon points greater than lower bound
-        rlon = lons[0,:]>=lonbounds[0]
-        # Store index of first value greater than lower bound
-        lonin = np.argmin(~rlon)
-
-        # Boolean of lon points less than upper bound
-        rlon = lons[0,:]<=lonbounds[1]
-        # Store index of last value less than upper bound
-        lonax = np.argmax(~rlon)
-
-        # Restrict mask_rho (binary water/coast) using indices from above
-        maskr = maskr[latin:latax, lonin:lonax]
-        #Print restricted maskr to comapre to later paper matrix
-        # Restrict lat and lon using indices from above
-        # plaid grid, take one row/column to prevent repeated values
-        lat = lats[latin:latax, 0]
-        lon = lons[0, lonin:lonax]
-
-        # Create empty list to store coastal water lat indices
-        il=[]
-        # Create empty list to store coastal water lon indices
-        jl=[]
-        # Create empty matrix to show coastal values
-        paper=np.zeros_like(maskr)
-
-        # For loop finds all adjacent values to water values and stores a water value
-        # if that value is next to any coast
-        # 1=water, 0=land
-        # Make sure for loop does not inclue first and last columns and rows, as they will
-        # compare to non-adjacent values (index 0 -1 = index 14)
-        for i in range(1,14):
-            for j in range(1,15):
-                if maskr[i, j]==1 and maskr[i-1, j]==0:
-                        paper[i,j]=2
-                        il.append(i)
-                        jl.append(j)
-                elif maskr[i, j]==1 and maskr[i+1, j]==0:
-                        paper[i,j]=2
-                        il.append(i)
-                        jl.append(j)
-                elif maskr[i, j]==1 and maskr[i, j+1]==0:
-                        paper[i,j]=2
-                        il.append(i)
-                        jl.append(j)
-                elif maskr[i, j]==1 and maskr[i, j-1]==0:
-                        paper[i,j]=2
-                        il.append(i)
-                        jl.append(j)
-                elif maskr[i, j]==1 and maskr[i-1, j-1]==0:
-                        paper[i,j]=2
-                        il.append(i)
-                        jl.append(j)
-                elif maskr[i, j]==1 and maskr[i-1, j+1]==0:
-                        paper[i,j]=2
-                        il.append(i)
-                        jl.append(j)
-                elif maskr[i, j]==1 and maskr[i+1, j-1]==0:
-                        paper[i,j]=2
-                        il.append(i)
-                        jl.append(j)
-                elif maskr[i, j]==1 and maskr[i+1, j+1]==0:
-                        paper[i,j]=2
-                        il.append(i)
-                        jl.append(j)
-                else:
-                    continue
-        # Print matrix that shows ID'ed coast water
-        # Create vectors of coastal waters within bounds
-        latf = lat[il]
-        lonf = lon[jl]
         lonvec = lonf
         latvec = latf
         pcs_vec = np.zeros_like(lonf)
-        ds.close()
         plon00, plat00, pcs00 = ic_from_list(lonvec, latvec, pcs_vec)
+        ds.close()
+    elif exp_name == 'duw': # Duwamish River Populated
+
+        # Set area to search for coastline (at least 1 grid cell larger than desired coast)
+        latbounds = [47.49, 47.5912]
+        lonbounds = [-122.3632, -122.1674]
+
+        latf, lonf = get_boundaries(latbounds, lonbounds)
+
+        lonvec = lonf
+        latvec = latf
+        pcs_vec = np.zeros_like(lonf)
+        plon00, plat00, pcs00 = ic_from_list(lonvec, latvec, pcs_vec)
+        ds.close()
+    elif exp_name == 'tac': # Tacoma [Comencement Bay]
+
+        # Set area to search for coastline (at least 1 grid cell larger than desired coast)
+        latbounds = [47.217061, 47.305420]
+        lonbounds = [-122.5, -122.3]
+        # Call boudary function to find water grids next to land grids within boundaries
+        latf, lonf = get_boundaries(latbounds, lonbounds)
+        # standardaize variables
+        lonvec = lonf
+        latvec = latf
+        pcs_vec = np.zeros_like(lonf)
+
+        plon00, plat00, pcs00 = ic_from_list(lonvec, latvec, pcs_vec)
+        ds.close()
+    elif exp_name == 'puy': # Puyallup River
+
+        # Set area to search for coastline (at least 1 grid cell larger than desired coast)
+        latbounds = [47.217061, 47.305420]
+        lonbounds = [-122.5, -122.3]
+
+        latf, lonf = get_boundaries(latbounds, lonbounds)
+
+        lonvec = lonf
+        latvec = latf
+        pcs_vec = np.zeros_like(lonf)
+        # plon00, plat00, pcs00 = ic_from_list(lonvec, latvec, pcs_vec)
+        plon00, plat00, pcs00 = ic_from_list(lonvec, latvec, pcs_vec)
+        ds.close()
     return plon00, plat00, pcs00
 
 def ic_from_meshgrid(lonvec, latvec, pcs_vec):

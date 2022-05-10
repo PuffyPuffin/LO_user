@@ -22,14 +22,14 @@ LOu = parent / 'LO_user'
 data = parent / 'LO_data'
 
 # This is where the ROMS source code, makefiles, and executables are
-roms_code = parent / 'LiveOcean_roms'
+roms_code = parent / 'LO_roms'
 
 # These are places where the ROMS history files are kept
-roms_out = parent / 'LiveOcean_roms'
+roms_out = parent / 'LO_roms'
 roms_out1 = parent / 'LiveOcean_roms' # placeholder
-roms_out2 = parent / 'LiveOcean_roms'
-roms_out3 = parent / 'LiveOcean_roms'
-roms_out4 = parent / 'LiveOcean_roms'
+roms_out2 = parent / 'LO_roms'
+roms_out3 = parent / 'LO_roms'
+roms_out4 = parent / 'LO_roms'
 
 # these are for mox and klone, other hyak mackines
 remote_user = 'BLANK'
@@ -49,7 +49,7 @@ except KeyError:
 if str(HOME) == '/home/mlpc':
     lo_env = 'loenv'
     which_matlab = '/Applications/MATLAB_R2020a.app/bin/matlab'
-    roms_out2 = parent / 'LiveOcean_roms' / 'output'    # LiveOcean past I
+    roms_out2 = parent / 'LO_roms'    # LiveOcean past I
     roms_out3 = parent / 'LiveOcean_roms' / 'output'    # LiveOcean past II (same as I)
 
 elif (str(HOME) == '/home/male370') & ('boiler' in HOSTNAME):
@@ -60,7 +60,7 @@ elif (str(HOME) == '/home/male370') & ('boiler' in HOSTNAME):
 
 elif (str(HOME) == '/home/male370') & ('perigee' in HOSTNAME):
     lo_env = 'ml_perigee'
-    roms_out1 = Path('/boildat1/parker/LiveOcean_roms/output')  # LiveOcean current
+    roms_out1 = Path('/data1/parker/LO_roms/cas')  # LiveOcean current
     roms_out2 = Path('/data1/parker/LiveOcean_roms/output')     # LiveOcean past I
     roms_out3 = Path('/data2/parker/LiveOcean_roms/output')     # LiveOcean past II
     roms_out4 = Path('/boildat1/parker/LO_roms')                # LO boiler

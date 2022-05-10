@@ -53,15 +53,13 @@ Ldir = Lfun.Lstart()
 
 from importlib import reload
 
-pth0 = Ldir['LOu'] / 'tracker'
-pth1 = Ldir['LO'] / 'tracker'
-pths = [pth0, pth1]
-if str(pths) not in sys.path:
-    sys.path.append(str(pths))
+pth = Ldir['LOu'] / 'tracker'
+if str(pth) not in sys.path:
+    sys.path.append(str(pth))
 import experiments as exp
 reload(exp)
-pth = Ldir['LO'] / 'tracker'
-from tracker import trackfun_nc as tfnc
+
+import trackfun_nc as tfnc
 reload(tfnc)
 
 # The import of trackfun or user_trackfun is done later in this program,
@@ -210,7 +208,7 @@ if (Ldir['LOu'] / 'tracker' / 'user_trackfun.py').is_file():
     sys.path.append(str(Ldir['LOu'] / 'tracker'))
     import user_trackfun as tfun
 else:
-    from tracker import trackfun as tfun
+    import trackfun as tfun
 reload(tfun)
 
 # get the initial particle location vectors

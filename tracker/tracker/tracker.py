@@ -53,15 +53,13 @@ Ldir = Lfun.Lstart()
 
 from importlib import reload
 
-pth0 = Ldir['LOu'] / 'tracker'
-pth1 = Ldir['LO'] / 'tracker'
-pths = [pth0, pth1]
-if str(pths) not in sys.path:
-    sys.path.append(str(pths))
+pth = Ldir['LOu'] / 'tracker'
+if str(pth) not in sys.path:
+    sys.path.append(str(pth))
 import experiments as exp
 reload(exp)
-pth = Ldir['LO'] / 'tracker'
-from tracker import trackfun_nc as tfnc
+
+import trackfun_nc as tfnc
 reload(tfnc)
 
 # The import of trackfun or user_trackfun is done later in this program,
@@ -75,14 +73,14 @@ parser = argparse.ArgumentParser()
 # Set the experiment name
 # (details set in experiments.py, or, if it exists, user_experiments.py)
 
-parser.add_argument('-gtx', '--gtagex', default='cas6_v0_live', type=str)
+parser.add_argument('-gtx', '--gtagex', default='cas6_v3_lo8b', type=str)
 parser.add_argument('-ro', '--roms_out_num', default=2, type=int)
 # 1 = Ldir['roms_out1'], etc.
 
 # this is the first starting day
-parser.add_argument('-d', '--date_string', default='2021.10.15', type=str)
+parser.add_argument('-d', '--date_string', default='2019.07.04', type=str)
 
-parser.add_argument('-exp', '--exp_name', default='elb', type=str)
+parser.add_argument('-exp', '--exp_name', default='jdf0', type=str)
 parser.add_argument('-clb', '--clobber', default=False, type=zfun.boolean_string)
 # overwrite existing output folder if clobber == True
 parser.add_argument('-sub_tag', default='', type=str)
@@ -210,7 +208,7 @@ if (Ldir['LOu'] / 'tracker' / 'user_trackfun.py').is_file():
     sys.path.append(str(Ldir['LOu'] / 'tracker'))
     import user_trackfun as tfun
 else:
-    from tracker import trackfun as tfun
+    import trackfun as tfun
 reload(tfun)
 
 # get the initial particle location vectors
